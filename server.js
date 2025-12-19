@@ -103,7 +103,13 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100 // limit each IP to 100 requests per windowMs
 });
-app.use('/api/', limiter);
+app.use('/api/', (req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    return next(); // allow preflight
+  }
+  limiter(req, res, next);
+});
+
 
 // Initialize Socket.io
 initializeSocket(io);
@@ -123,12 +129,28 @@ app.get('/api/health', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (
+    origin &&
+    (allowedOrigins.includes(origin) || origin.includes('.vercel.app'))
+  ) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization'
+  );
+
   console.error(err.stack);
+
   res.status(err.status || 500).json({
-    message: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    message: err.message || 'Internal Server Error'
   });
 });
+
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/bookmyshow')
