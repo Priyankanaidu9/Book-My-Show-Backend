@@ -149,7 +149,7 @@ router.post('/lock', authMiddleware, async (req, res) => {
 // @route   POST /api/seats/unlock
 // @desc    Unlock seats
 // @access  Private
-router.post('/unlock', protect, async (req, res) => {
+router.post('/unlock', authMiddleware, async (req, res) => {
   try {
     const { theaterId, showtime } = req.body;
 
