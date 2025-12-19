@@ -3,6 +3,9 @@ import Theater from '../models/Theater.js';
 import redisClient from '../config/redis.js';
 import { authMiddleware } from '../middleware/auth.js';
 
+const isRedisAvailable = () => {
+  return redisClient && (redisClient.isOpen || redisClient.isReady);
+};
 
 const router = express.Router();
 
@@ -90,7 +93,14 @@ router.post('/lock', authMiddleware, async (req, res) => {
     const userLockKey = `user:lock:${req.user.id}:${theaterId}:${showtime}`;
 
     // Check if any seat is already locked or booked
-    const existingLocks = await redisClient.hGetAll(lockKey);
+    let existingLocks = {};
+
+if (isRedisAvailable()) {
+  existingLocks = await redisClient.hGetAll(lockKey);
+} else {
+  console.warn('Redis not available, skipping lock checks');
+}
+
     const conflicts = [];
 
     for (const seat of seats) {
@@ -129,11 +139,14 @@ router.post('/lock', authMiddleware, async (req, res) => {
       userSeats.push(seatKey);
     }
 
-    await redisClient.hSet(lockKey, lockData);
-    await redisClient.expire(lockKey, 300); // 5 minutes
-
-    // Store user's locked seats
-    await redisClient.setEx(userLockKey, 300, JSON.stringify(seats));
+    if (isRedisAvailable()) {
+      await redisClient.hSet(lockKey, lockData);
+      await redisClient.expire(lockKey, 300);
+      await redisClient.setEx(userLockKey, 300, JSON.stringify(seats));
+    } else {
+      console.warn('Redis not available, skipping seat locking');
+    }
+    
 
     res.json({
       success: true,
@@ -157,18 +170,18 @@ router.post('/unlock', authMiddleware, async (req, res) => {
     const userLockKey = `user:lock:${req.user.id}:${theaterId}:${showtime}`;
 
     // Get user's locked seats
-    const userSeats = await redisClient.get(userLockKey);
-    if (userSeats) {
-      const seats = JSON.parse(userSeats);
-      
-      // Remove user's locks
-      for (const seat of seats) {
-        const seatKey = `${seat.row}-${seat.seat}`;
-        await redisClient.hDel(lockKey, seatKey);
+    if (isRedisAvailable()) {
+      const userSeats = await redisClient.get(userLockKey);
+      if (userSeats) {
+        const seats = JSON.parse(userSeats);
+        for (const seat of seats) {
+          const seatKey = `${seat.row}-${seat.seat}`;
+          await redisClient.hDel(lockKey, seatKey);
+        }
+        await redisClient.del(userLockKey);
       }
-      
-      await redisClient.del(userLockKey);
     }
+    
 
     res.json({ success: true, message: 'Seats unlocked' });
   } catch (error) {
