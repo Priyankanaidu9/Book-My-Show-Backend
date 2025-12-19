@@ -35,9 +35,20 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
-    } else {
+    } 
+    // Allow all Vercel preview deployments (they use *.vercel.app domain)
+    else if (origin.includes('.vercel.app')) {
+      callback(null, true);
+    }
+    // In development, allow all origins
+    else if (process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } 
+    else {
+      console.warn(`CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -47,9 +58,29 @@ const corsOptions = {
   exposedHeaders: ['Set-Cookie']
 };
 
+// Socket.io CORS configuration
+// Socket.io accepts a function for origin validation
 const io = new Server(httpServer, {
   cors: {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // Allow requests with no origin
+      if (!origin) return callback(null, true);
+      
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      // Allow all Vercel preview deployments
+      if (origin.includes('.vercel.app')) {
+        return callback(null, true);
+      }
+      // In development, allow all origins
+      if (process.env.NODE_ENV !== 'production') {
+        return callback(null, true);
+      }
+      // Reject in production
+      callback(new Error('Not allowed by CORS'));
+    },
     methods: ['GET', 'POST'],
     credentials: true
   }
