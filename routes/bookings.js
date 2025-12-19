@@ -3,7 +3,7 @@ import Booking from '../models/Booking.js';
 import Theater from '../models/Theater.js';
 import User from '../models/User.js';
 import redisClient from '../config/redis.js';
-import { protect } from '../middleware/auth.js';
+import { authMiddleware } from '../middleware/auth.js';
 import QRCode from 'qrcode';
 
 const router = express.Router();
@@ -11,7 +11,7 @@ const router = express.Router();
 // @route   POST /api/bookings
 // @desc    Create a new booking
 // @access  Private
-router.post('/', protect, async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { movieId, theaterId, showtime, showDate, seats, amount, foodBeverage, paymentId } = req.body;
 
@@ -96,7 +96,7 @@ router.post('/', protect, async (req, res) => {
 // @route   GET /api/bookings/:userId
 // @desc    Get user bookings
 // @access  Private
-router.get('/:userId', protect, async (req, res) => {
+router.get('/:userId', authMiddleware, async (req, res) => {
   try {
     if (req.params.userId !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized' });
@@ -117,7 +117,7 @@ router.get('/:userId', protect, async (req, res) => {
 // @route   GET /api/bookings/ticket/:bookingId
 // @desc    Get booking ticket details
 // @access  Private
-router.get('/ticket/:bookingId', protect, async (req, res) => {
+router.get('/ticket/:bookingId', authMiddleware, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.bookingId)
       .populate('movieId', 'title posterUrl genre duration')

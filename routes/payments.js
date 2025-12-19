@@ -1,6 +1,6 @@
 import express from 'express';
 import Stripe from 'stripe';
-import { protect } from '../middleware/auth.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -11,7 +11,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder'
 // @route   POST /api/payments/create-intent
 // @desc    Create Stripe payment intent
 // @access  Private
-router.post('/create-intent', protect, async (req, res) => {
+router.post('/create-intent', authMiddleware, async (req, res) => {
   try {
     const { amount, currency = 'inr' } = req.body;
 
