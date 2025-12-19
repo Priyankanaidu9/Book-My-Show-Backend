@@ -19,7 +19,9 @@ import { initializeSocket } from './socket/socketHandler.js';
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1); // 👈 ADD THIS LINE
 const httpServer = createServer(app);
+
 
 // Configure allowed origins for CORS
 const allowedOrigins = [
