@@ -1,7 +1,8 @@
 import express from 'express';
 import Theater from '../models/Theater.js';
 import redisClient from '../config/redis.js';
-import { protect } from '../middleware/auth.js';
+import { authMiddleware } from '../middleware/auth.js';
+
 
 const router = express.Router();
 
@@ -64,7 +65,7 @@ router.get('/', async (req, res) => {
 // @route   POST /api/seats/lock
 // @desc    Lock seats for 5 minutes
 // @access  Private
-router.post('/lock', protect, async (req, res) => {
+router.post('/lock', authMiddleware, async (req, res) => {
   try {
     const { seats, theaterId, showtime } = req.body;
 
